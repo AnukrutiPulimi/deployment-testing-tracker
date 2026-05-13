@@ -101,6 +101,27 @@
         </div>
       </div>
 
+      <div class="manual-entry-section">
+        <h3>Manual Hour Entry</h3>
+        <form id="manualEntryForm">
+          <div class="form-field">
+            <label for="manualDeploymentDropdown">Select Deployment:</label>
+            <select id="manualDeploymentDropdown" required>
+              <option value="">-- Choose a Deployment --</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="manualEntryDate">Date:</label>
+            <input type="date" id="manualEntryDate" required>
+          </div>
+          <div class="form-field">
+            <label for="manualEntryHours">Hours (decimal allowed):</label>
+            <input type="number" id="manualEntryHours" min="0.25" max="24" step="0.25" placeholder="e.g., 8.5" required>
+          </div>
+          <button type="submit" class="btn-primary">Submit Entry</button>
+        </form>
+      </div>
+
       <div id="dashboardMessage" class="message"></div>
     </div>
   </div>

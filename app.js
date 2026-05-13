@@ -24,6 +24,7 @@ function setupEventListeners() {
   const clockInBtn = document.getElementById('clockInBtn');
   const clockOutBtn = document.getElementById('clockOutBtn');
   const clockDeploymentDropdown = document.getElementById('clockDeploymentDropdown');
+  const manualEntryForm = document.getElementById('manualEntryForm');
   
   form.addEventListener('submit', function(e) {
     e.preventDefault();
@@ -74,6 +75,28 @@ function setupEventListeners() {
       clockState.selectedDeploymentId = this.value;
     }
   });
+
+  manualEntryForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const deploymentId = document.getElementById('manualDeploymentDropdown').value;
+    const entryDate = document.getElementById('manualEntryDate').value;
+    const hours = parseFloat(document.getElementById('manualEntryHours').value);
+
+    if (!deploymentId) {
+      showDashboardMessage('Please select a deployment.', 'error');
+      return;
+    }
+    if (!entryDate) {
+      showDashboardMessage('Please select a date.', 'error');
+      return;
+    }
+    if (hours <= 0) {
+      showDashboardMessage('Hours must be greater than 0.', 'error');
+      return;
+    }
+
+    saveManualEntry(deploymentId, entryDate, hours);
+  });
 }
 
 // Show profile section, hide dashboard
@@ -94,6 +117,7 @@ function showProfileSelected() {
   document.getElementById('currentProfileName').textContent = `Logged in as: ${selectedProfile.Title} (${selectedProfile.Email})`;
   loadDeployments();
   populateClockDropdown();
+  populateManualEntryDropdown();
 }
 
 // Load profiles from SharePoint REST API
@@ -207,6 +231,41 @@ function populateClockDropdown() {
   })
   .catch(error => {
     console.error('Error populating clock dropdown:', error);
+  });
+}
+
+// Populate manual entry dropdown with active deployments
+function populateManualEntryDropdown() {
+  if (!selectedProfile || !siteUrl) {
+    return;
+  }
+
+  const restUrl = `${siteUrl}/_api/web/lists/getbyTitle('Deployments')/items?$filter=ProfileEmail eq '${selectedProfile.Email}' and IsCompleted eq false&$select=ID,Title,WeekStart,WeekEnd,RemainingHours&$orderby=WeekStart desc`;
+  
+  fetch(restUrl, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    const dropdown = document.getElementById('manualDeploymentDropdown');
+    dropdown.innerHTML = '<option value="">-- Choose a Deployment --</option>';
+    
+    if (data.value && data.value.length > 0) {
+      data.value.forEach(deployment => {
+        const option = document.createElement('option');
+        const weekStart = formatDate(new Date(deployment.WeekStart));
+        option.value = deployment.ID;
+        option.textContent = `Week of ${weekStart} (${deployment.RemainingHours} hrs remaining)`;
+        dropdown.appendChild(option);
+      });
+    }
+  })
+  .catch(error => {
+    console.error('Error populating manual entry dropdown:', error);
   });
 }
 
@@ -510,6 +569,7 @@ function createDeployment(weekStart, allocatedHours) {
       document.getElementById('createDeploymentForm').reset();
       loadDeployments();
       populateClockDropdown();
+      populateManualEntryDropdown();
     })
     .catch(error => {
       console.error('Error creating deployment:', error);
@@ -541,4 +601,104 @@ function showDashboardMessage(text, type) {
       messageDiv.className = 'message';
     }, 4000);
   }
+}
+
+// Save manual entry to ClockSessions and update deployment
+function saveManualEntry(deploymentId, entryDate, hours) {
+  getRequestDigest()
+    .then(digest => {
+      return fetch(`${siteUrl}/_api/web/lists/getbyTitle('Deployments')/items(${deploymentId})?$select=ID,UsedHours,RemainingHours,AllocatedHours`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(deployment => {
+        const currentUsed = deployment.UsedHours || 0;
+        const remaining = deployment.RemainingHours || deployment.AllocatedHours;
+
+        if (hours > remaining) {
+          showDashboardMessage(`Cannot log ${hours} hours. Only ${remaining} hours remaining.`, 'error');
+          return Promise.reject('Exceeds remaining hours');
+        }
+
+        const newUsedHours = currentUsed + hours;
+        const newRemainingHours = remaining - hours;
+        const isCompleted = newRemainingHours <= 0;
+
+        const entryDateTime = new Date(entryDate);
+        entryDateTime.setHours(12, 0, 0, 0);
+
+        const manualEntryData = {
+          DeploymentId: deploymentId,
+          ProfileEmail: selectedProfile.Email,
+          EntryType: 'Manual',
+          ManualDate: entryDateTime.toISOString(),
+          ManualHours: hours,
+          DurationHours: hours,
+          SessionDate: new Date().toISOString()
+        };
+
+        const clockSessionUrl = `${siteUrl}/_api/web/lists/getbyTitle('ClockSessions')/items`;
+        
+        return fetch(clockSessionUrl, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-RequestDigest': digest
+          },
+          body: JSON.stringify(manualEntryData)
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(() => {
+          const updateData = {
+            UsedHours: newUsedHours,
+            RemainingHours: newRemainingHours,
+            IsCompleted: isCompleted
+          };
+
+          const deploymentUrl = `${siteUrl}/_api/web/lists/getbyTitle('Deployments')/items(${deploymentId})`;
+          
+          return fetch(deploymentUrl, {
+            method: 'MERGE',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'X-RequestDigest': digest,
+              'If-Match': '*'
+            },
+            body: JSON.stringify(updateData)
+          });
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const message = isCompleted 
+            ? `Entry saved (${hours} hrs). Deployment completed!` 
+            : `Entry saved (${hours} hrs). ${newRemainingHours} hours remaining.`;
+          
+          showDashboardMessage(message, 'success');
+          document.getElementById('manualEntryForm').reset();
+          loadDeployments();
+          populateClockDropdown();
+          populateManualEntryDropdown();
+        });
+      });
+    })
+    .catch(error => {
+      console.error('Error saving manual entry:', error);
+      if (error !== 'Exceeds remaining hours') {
+        showDashboardMessage('Error saving entry. Check console for details.', 'error');
+      }
+    });
 }
