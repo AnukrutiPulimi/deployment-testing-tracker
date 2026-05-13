@@ -228,3 +228,63 @@ h3 {
   color: #a94442;
   border: 1px solid #ebccd1;
 }
+
+.clock-section {
+  background: white;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  margin-bottom: 20px;
+  max-width: 500px;
+}
+
+.clock-section h3 {
+  margin-top: 0;
+}
+
+.clock-display {
+  text-align: center;
+  padding: 20px;
+  background-color: #f9f8f7;
+  border-radius: 4px;
+  margin: 15px 0;
+}
+
+.timer {
+  font-family: 'Courier New', monospace;
+  font-size: 48px;
+  font-weight: bold;
+  color: #2b6cb0;
+  margin: 15px 0;
+  letter-spacing: 2px;
+}
+
+.clock-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 15px 0;
+}
+
+.clock-controls button {
+  flex: 1;
+  max-width: 150px;
+  padding: 10px 20px;
+}
+
+.btn-disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-disabled:hover {
+  background-color: #ccc;
+}
+
+.clock-status {
+  color: #666;
+  font-size: 14px;
+  margin: 10px 0 0 0;
+  font-style: italic;
+}

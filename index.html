@@ -82,6 +82,25 @@
         </form>
       </div>
 
+      <div class="clock-section">
+        <h3>Clock In / Clock Out</h3>
+        <div class="form-field">
+          <label for="clockDeploymentDropdown">Select Deployment:</label>
+          <select id="clockDeploymentDropdown">
+            <option value="">-- Choose a Deployment --</option>
+          </select>
+        </div>
+        
+        <div class="clock-display">
+          <div class="timer" id="timerDisplay">00:00:00</div>
+          <div class="clock-controls">
+            <button type="button" id="clockInBtn" class="btn-primary">Clock In</button>
+            <button type="button" id="clockOutBtn" class="btn-primary btn-disabled" disabled>Clock Out</button>
+          </div>
+          <p id="clockStatus" class="clock-status"></p>
+        </div>
+      </div>
+
       <div id="dashboardMessage" class="message"></div>
     </div>
   </div>

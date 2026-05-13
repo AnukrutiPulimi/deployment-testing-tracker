@@ -1,5 +1,11 @@
 // Global variable to store selected profile
 let selectedProfile = null;
+let clockState = {
+  isClocked: false,
+  startTime: null,
+  timerInterval: null,
+  selectedDeploymentId: null
+};
 
 // SharePoint site URL
 const siteUrl = _spPageContextInfo ? _spPageContextInfo.webAbsoluteUrl : '';
@@ -15,6 +21,9 @@ function setupEventListeners() {
   const form = document.getElementById('createProfileForm');
   const dropdown = document.getElementById('profileDropdown');
   const deploymentForm = document.getElementById('createDeploymentForm');
+  const clockInBtn = document.getElementById('clockInBtn');
+  const clockOutBtn = document.getElementById('clockOutBtn');
+  const clockDeploymentDropdown = document.getElementById('clockDeploymentDropdown');
   
   form.addEventListener('submit', function(e) {
     e.preventDefault();
@@ -46,6 +55,25 @@ function setupEventListeners() {
       createDeployment(weekStart, allocatedHours);
     }
   });
+
+  clockInBtn.addEventListener('click', function() {
+    const deploymentId = clockDeploymentDropdown.value;
+    if (deploymentId) {
+      startClock(deploymentId);
+    } else {
+      showDashboardMessage('Please select a deployment first.', 'error');
+    }
+  });
+
+  clockOutBtn.addEventListener('click', function() {
+    stopClock();
+  });
+
+  clockDeploymentDropdown.addEventListener('change', function() {
+    if (this.value) {
+      clockState.selectedDeploymentId = this.value;
+    }
+  });
 }
 
 // Show profile section, hide dashboard
@@ -65,6 +93,7 @@ function showProfileSelected() {
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('currentProfileName').textContent = `Logged in as: ${selectedProfile.Title} (${selectedProfile.Email})`;
   loadDeployments();
+  populateClockDropdown();
 }
 
 // Load profiles from SharePoint REST API
@@ -146,6 +175,41 @@ function loadDeployments() {
   });
 }
 
+// Populate clock dropdown with active deployments
+function populateClockDropdown() {
+  if (!selectedProfile || !siteUrl) {
+    return;
+  }
+
+  const restUrl = `${siteUrl}/_api/web/lists/getbyTitle('Deployments')/items?$filter=ProfileEmail eq '${selectedProfile.Email}' and IsCompleted eq false&$select=ID,Title,WeekStart,WeekEnd,RemainingHours&$orderby=WeekStart desc`;
+  
+  fetch(restUrl, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    const dropdown = document.getElementById('clockDeploymentDropdown');
+    dropdown.innerHTML = '<option value="">-- Choose a Deployment --</option>';
+    
+    if (data.value && data.value.length > 0) {
+      data.value.forEach(deployment => {
+        const option = document.createElement('option');
+        const weekStart = formatDate(new Date(deployment.WeekStart));
+        option.value = deployment.ID;
+        option.textContent = `Week of ${weekStart} (${deployment.RemainingHours} hrs remaining)`;
+        dropdown.appendChild(option);
+      });
+    }
+  })
+  .catch(error => {
+    console.error('Error populating clock dropdown:', error);
+  });
+}
+
 // Create deployment row in table
 function createDeploymentRow(deployment) {
   const row = document.createElement('tr');
@@ -184,6 +248,159 @@ function formatDate(date) {
   const day = String(d.getDate()).padStart(2, '0');
   const year = d.getFullYear();
   return `${month}/${day}/${year}`;
+}
+
+// Format seconds to HH:MM:SS
+function formatTime(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+// Convert seconds to decimal hours
+function secondsToDecimalHours(seconds) {
+  return parseFloat((seconds / 3600).toFixed(2));
+}
+
+// Start clock
+function startClock(deploymentId) {
+  if (clockState.isClocked) {
+    return;
+  }
+
+  clockState.isClocked = true;
+  clockState.startTime = Date.now();
+  clockState.selectedDeploymentId = deploymentId;
+
+  document.getElementById('clockInBtn').disabled = true;
+  document.getElementById('clockInBtn').classList.add('btn-disabled');
+  document.getElementById('clockOutBtn').disabled = false;
+  document.getElementById('clockOutBtn').classList.remove('btn-disabled');
+  document.getElementById('clockDeploymentDropdown').disabled = true;
+  document.getElementById('clockStatus').textContent = 'Clocked in...';
+
+  clockState.timerInterval = setInterval(function() {
+    const elapsed = Math.floor((Date.now() - clockState.startTime) / 1000);
+    document.getElementById('timerDisplay').textContent = formatTime(elapsed);
+  }, 1000);
+
+  showDashboardMessage('Clocked in. Timer started.', 'success');
+}
+
+// Stop clock
+function stopClock() {
+  if (!clockState.isClocked) {
+    return;
+  }
+
+  clearInterval(clockState.timerInterval);
+  
+  const elapsedSeconds = Math.floor((Date.now() - clockState.startTime) / 1000);
+  const decimalHours = secondsToDecimalHours(elapsedSeconds);
+
+  clockState.isClocked = false;
+
+  document.getElementById('clockInBtn').disabled = false;
+  document.getElementById('clockInBtn').classList.remove('btn-disabled');
+  document.getElementById('clockOutBtn').disabled = true;
+  document.getElementById('clockOutBtn').classList.add('btn-disabled');
+  document.getElementById('clockDeploymentDropdown').disabled = false;
+  document.getElementById('timerDisplay').textContent = '00:00:00';
+  document.getElementById('clockStatus').textContent = '';
+
+  saveClockSession(clockState.selectedDeploymentId, decimalHours);
+}
+
+// Save clock session to ClockSessions list and update deployment
+function saveClockSession(deploymentId, decimalHours) {
+  getRequestDigest()
+    .then(digest => {
+      return fetch(`${siteUrl}/_api/web/lists/getbyTitle('Deployments')/items(${deploymentId})?$select=ID,UsedHours,RemainingHours,AllocatedHours`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(deployment => {
+        const currentUsed = deployment.UsedHours || 0;
+        const remaining = deployment.RemainingHours || deployment.AllocatedHours;
+
+        if (decimalHours > remaining) {
+          showDashboardMessage(`Cannot log ${decimalHours} hours. Only ${remaining} hours remaining.`, 'error');
+          return Promise.reject('Exceeds remaining hours');
+        }
+
+        const newUsedHours = currentUsed + decimalHours;
+        const newRemainingHours = remaining - decimalHours;
+        const isCompleted = newRemainingHours <= 0;
+
+        const clockSessionData = {
+          DeploymentId: deploymentId,
+          ProfileEmail: selectedProfile.Email,
+          EntryType: 'Clock',
+          Duration: decimalHours,
+          SessionDate: new Date().toISOString()
+        };
+
+        const clockSessionUrl = `${siteUrl}/_api/web/lists/getbyTitle('ClockSessions')/items`;
+        
+        return fetch(clockSessionUrl, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-RequestDigest': digest
+          },
+          body: JSON.stringify(clockSessionData)
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(() => {
+          const updateData = {
+            UsedHours: newUsedHours,
+            RemainingHours: newRemainingHours,
+            IsCompleted: isCompleted
+          };
+
+          const deploymentUrl = `${siteUrl}/_api/web/lists/getbyTitle('Deployments')/items(${deploymentId})`;
+          
+          return fetch(deploymentUrl, {
+            method: 'MERGE',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'X-RequestDigest': digest,
+              'If-Match': '*'
+            },
+            body: JSON.stringify(updateData)
+          });
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const message = isCompleted 
+            ? `Session saved (${decimalHours} hrs). Deployment completed!` 
+            : `Session saved (${decimalHours} hrs). ${newRemainingHours} hours remaining.`;
+          
+          showDashboardMessage(message, 'success');
+          loadDeployments();
+          populateClockDropdown();
+        });
+      });
+    })
+    .catch(error => {
+      console.error('Error saving clock session:', error);
+      showDashboardMessage('Error saving session. Check console for details.', 'error');
+    });
 }
 
 // Get request digest for POST operations
@@ -292,6 +509,7 @@ function createDeployment(weekStart, allocatedHours) {
       showDashboardMessage(`Deployment created for week of ${formatDate(deployment.WeekStart)}!`, 'success');
       document.getElementById('createDeploymentForm').reset();
       loadDeployments();
+      populateClockDropdown();
     })
     .catch(error => {
       console.error('Error creating deployment:', error);
