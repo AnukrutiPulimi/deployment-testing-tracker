@@ -3,12 +3,50 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Deployment Tracker</title>
+  <title>Deployment Testing Tracker</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>Deployment Tracker</h1>
-  <div id="app"></div>
+  <div class="container">
+    <h1>Deployment Testing Tracker</h1>
+    
+    <div class="profile-section">
+      <h2>Select or Create Profile</h2>
+      
+      <div class="form-group">
+        <label for="profileDropdown">Existing Profiles:</label>
+        <select id="profileDropdown">
+          <option value="">-- Select a Profile --</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <h3>Create New Profile</h3>
+        <form id="createProfileForm">
+          <div class="form-field">
+            <label for="profileName">Profile Name:</label>
+            <input type="text" id="profileName" placeholder="e.g., Tester 1" required>
+          </div>
+          <div class="form-field">
+            <label for="profileEmail">Email:</label>
+            <input type="email" id="profileEmail" placeholder="e.g., tester@exeloncorp.com" required>
+          </div>
+          <div class="form-field">
+            <label for="profileRole">Role:</label>
+            <input type="text" id="profileRole" placeholder="e.g., QA Tester" required>
+          </div>
+          <button type="submit" class="btn-primary">Create Profile</button>
+        </form>
+      </div>
+
+      <div id="message" class="message"></div>
+    </div>
+
+    <div id="dashboard" class="dashboard" style="display:none;">
+      <!-- Dashboard will be implemented in Phase 2 -->
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
