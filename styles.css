@@ -120,3 +120,111 @@ h3 {
 .dashboard {
   margin-top: 30px;
 }
+
+.dashboard-header {
+  background: white;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  margin-bottom: 20px;
+}
+
+.dashboard-header h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.profile-display {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+
+.deployments-section {
+  background: white;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+
+.deployments-section h3 {
+  margin-top: 0;
+}
+
+.deployments-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.deployments-table thead {
+  background-color: #f3f2f1;
+  border-bottom: 2px solid #ddd;
+}
+
+.deployments-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+}
+
+.deployments-table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.deployments-table tbody tr {
+  transition: background-color 0.2s;
+}
+
+.deployments-table tbody tr:hover {
+  background-color: #f9f8f7;
+}
+
+.deployments-table tbody tr.expired-warning {
+  background-color: #ffe6e6;
+  font-weight: 500;
+}
+
+.no-data {
+  color: #999;
+  font-style: italic;
+  padding: 20px;
+  text-align: center;
+}
+
+.create-deployment-section {
+  background: white;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  margin-bottom: 20px;
+  max-width: 500px;
+}
+
+.create-deployment-section h3 {
+  margin-top: 0;
+}
+
+#dashboardMessage {
+  margin-top: 15px;
+  padding: 12px;
+  border-radius: 4px;
+}
+
+#dashboardMessage.success {
+  display: block;
+  background-color: #dff0d8;
+  color: #3c763d;
+  border: 1px solid #d6e9c6;
+}
+
+#dashboardMessage.error {
+  display: block;
+  background-color: #f2dede;
+  color: #a94442;
+  border: 1px solid #ebccd1;
+}

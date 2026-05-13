@@ -10,7 +10,7 @@
   <div class="container">
     <h1>Deployment Testing Tracker</h1>
     
-    <div class="profile-section">
+    <div id="profileSection" class="profile-section">
       <h2>Select or Create Profile</h2>
       
       <div class="form-group">
@@ -43,7 +43,46 @@
     </div>
 
     <div id="dashboard" class="dashboard" style="display:none;">
-      <!-- Dashboard will be implemented in Phase 2 -->
+      <div class="dashboard-header">
+        <h2>My Deployment Hours</h2>
+        <p id="currentProfileName" class="profile-display"></p>
+      </div>
+
+      <div class="deployments-section">
+        <h3>My Deployments</h3>
+        <table id="deploymentsTable" class="deployments-table">
+          <thead>
+            <tr>
+              <th>Week Start</th>
+              <th>Week End</th>
+              <th>Allocated Hours</th>
+              <th>Used Hours</th>
+              <th>Remaining Hours</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="deploymentsTableBody">
+          </tbody>
+        </table>
+        <p id="noDeployments" class="no-data">No deployments yet. Create one below.</p>
+      </div>
+
+      <div class="create-deployment-section">
+        <h3>Create New Deployment</h3>
+        <form id="createDeploymentForm">
+          <div class="form-field">
+            <label for="deploymentWeekStart">Week Start Date:</label>
+            <input type="date" id="deploymentWeekStart" required>
+          </div>
+          <div class="form-field">
+            <label for="deploymentAllocatedHours">Allocated Hours:</label>
+            <input type="number" id="deploymentAllocatedHours" min="1" max="160" placeholder="e.g., 40" required>
+          </div>
+          <button type="submit" class="btn-primary">Create Deployment</button>
+        </form>
+      </div>
+
+      <div id="dashboardMessage" class="message"></div>
     </div>
   </div>
 
